@@ -28,10 +28,6 @@ As you may know, in ML, "Garbage in, garbage out" applies, we must to check accu
 
 ## **Reproducibility**
 
-ML, unlike traditional software, have an inherent element of randomness.
-For example, matrix weights are initialized with random values, so the model converge to different outputs for different training execution.
-This can make it difficult to run comparisons across experiment (fix a value for seed solve this issue).
-
 Machine learning, unlike traditional software, has an inherent element of randomness. For example, matrix weights are initialized with random values, so the model converges to different outputs for different training executions. This can make it difficult to run comparisons across experiments. Fixing a value for seed can solve this issue.
 
 Training an ML model involves several artifacts that need to be fixed to ensure reproducibility: the data used, the splitting mechanism used to generate datasets for training and validation, data preparation and model hyperparameters, and variables like batch size and learning rate schedule. It also applies to ML framework dependencies. Running ML workloads in containers and standardizing library versions can help ensure repeatability.
