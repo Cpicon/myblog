@@ -31,20 +31,20 @@
 {# ML Playground Section - Main Feature #}
 <section class="ml-playground">
     <div class="playground-header">
-        <h2 class="section-heading terminal-heading">Neural Network Playground</h2>
-        <p class="playground-subtitle">Watch data flow through a neural network in real-time</p>
+        <h2 class="section-heading terminal-heading">{% if lang == "es" %}Playground de Redes Neuronales{% else %}Neural Network Playground{% endif %}</h2>
+        <p class="playground-subtitle">{% if lang == "es" %}Observa el flujo de datos a través de una red neuronal en tiempo real{% else %}Watch data flow through a neural network in real-time{% endif %}</p>
     </div>
 
     {# Neural Network Visualization #}
     <div class="nn-visualization-container">
-        <canvas id="nn-canvas" aria-label="Neural network visualization"></canvas>
+        <canvas id="nn-canvas" aria-label="{% if lang == 'es' %}Visualización de red neuronal{% else %}Neural network visualization{% endif %}"></canvas>
         <div class="nn-info-overlay">
             <div class="nn-stat">
-                <span class="stat-label">Architecture</span>
+                <span class="stat-label">{% if lang == "es" %}Arquitectura{% else %}Architecture{% endif %}</span>
                 <span class="stat-value">4 → 8 → 12 → 8 → 4</span>
             </div>
             <div class="nn-stat">
-                <span class="stat-label">Activation</span>
+                <span class="stat-label">{% if lang == "es" %}Activación{% else %}Activation{% endif %}</span>
                 <span class="stat-value">ReLU</span>
             </div>
         </div>
@@ -54,20 +54,20 @@
 {# Training Dashboard Section #}
 <section class="training-dashboard">
     <div class="dashboard-header">
-        <h2 class="section-heading terminal-heading">Training Monitor</h2>
+        <h2 class="section-heading terminal-heading">{% if lang == "es" %}Monitor de Entrenamiento{% else %}Training Monitor{% endif %}</h2>
         <div class="training-status">
             <span class="status-indicator"></span>
-            <span id="epoch-counter">Epoch 0/50</span>
+            <span id="epoch-counter">{% if lang == "es" %}Época{% else %}Epoch{% endif %} 0/50</span>
         </div>
     </div>
 
     <div class="metrics-display">
         <div class="metric-card">
-            <span class="metric-label">Loss</span>
+            <span class="metric-label">{% if lang == "es" %}Pérdida{% else %}Loss{% endif %}</span>
             <span class="metric-value" id="current-loss">--</span>
         </div>
         <div class="metric-card">
-            <span class="metric-label">Accuracy</span>
+            <span class="metric-label">{% if lang == "es" %}Precisión{% else %}Accuracy{% endif %}</span>
             <span class="metric-value" id="current-accuracy">--</span>
         </div>
     </div>
@@ -84,7 +84,7 @@
 
 {# Skills Section - Compact #}
 <section class="skills-section">
-    <h2 class="section-heading terminal-heading">Tech Stack</h2>
+    <h2 class="section-heading terminal-heading">{% if lang == "es" %}Stack Tecnológico{% else %}Tech Stack{% endif %}</h2>
     <div class="skills-grid">
         <span class="skill-badge ml">Python</span>
         <span class="skill-badge ml">TensorFlow</span>
@@ -92,7 +92,7 @@
         <span class="skill-badge ai">Transformers</span>
         <span class="skill-badge ai">Deep Learning</span>
         <span class="skill-badge ai">LLMs</span>
-        <span class="skill-badge data">Data Engineering</span>
+        <span class="skill-badge data">{% if lang == "es" %}Ingeniería de Datos{% else %}Data Engineering{% endif %}</span>
         <span class="skill-badge devops">MLOps</span>
         <span class="skill-badge devops">Kubernetes</span>
     </div>
@@ -100,9 +100,9 @@
 
 {# Latest Posts Section #}
 <section class="posts-section">
-    <h2 class="section-heading terminal-heading">Latest Posts</h2>
+    <h2 class="section-heading terminal-heading">{% if lang == "es" %}Últimas Publicaciones{% else %}Latest Posts{% endif %}</h2>
 
-    {% set posts_section = get_section(path="posts/_index.md") %}
+    {% set posts_section = get_section(path="posts/_index.md", lang=lang) %}
 
     {% if posts_section.pages %}
         <div class="posts-grid">
@@ -134,10 +134,10 @@
         {% endfor %}
         </div>
         <div class="view-all-container">
-            <a href="{{ get_url(path='@/posts/_index.md') }}" class="view-all-link">View all posts →</a>
+            <a href="{{ get_url(path='@/posts/_index.md', lang=lang) }}" class="view-all-link">{% if lang == "es" %}Ver todos los artículos →{% else %}View all posts →{% endif %}</a>
         </div>
     {% else %}
-        <p class="no-posts">No posts yet. Check back soon!</p>
+        <p class="no-posts">{% if lang == "es" %}Aún no hay publicaciones. ¡Vuelve pronto!{% else %}No posts yet. Check back soon!{% endif %}</p>
     {% endif %}
 </section>
 
