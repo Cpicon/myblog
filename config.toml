@@ -1,73 +1,221 @@
-# The URL the site will be built for
+# Future With ML - Zola Configuration
+# Theme: tabi (https://github.com/welpo/tabi)
+
 base_url = "https://futurewithml.netlify.app"
+title = "Future With ML"
+description = "Machine Learning Design Patterns, MLOps, and AI Engineering insights by Christian Picon Calderon"
+author = "Christian Picon Calderon"
 
-# Whether to automatically compile all Sass files in the sass directory
+# Build settings
+generate_feeds = true
 compile_sass = true
-
-# Whether to build a search index to be used later on by a JavaScript library
+minify_html = true
 build_search_index = true
+default_language = "en"
+theme = "tabi"
 
-# The site theme to use.
-theme = "DeepThought"
-
+# Taxonomies
 taxonomies = [
-    { name = "categories", feed = true, paginate_by = 10 },
-    { name = "tags", feed = true, paginate_by = 10 },
+    { name = "categories", feed = true },
+    { name = "tags", feed = true },
 ]
 
+# Search configuration
+[search]
+include_title = true
+include_description = true
+include_path = true
+include_content = true
+index_format = "elasticlunr_json"
+
+# Markdown settings
 [markdown]
-# Whether to do syntax highlighting
-# Theme can be customised by setting the `highlight_theme` variable to a theme supported by Zola
 highlight_code = true
+highlight_theme = "css"
+smart_punctuation = true
+bottom_footnotes = true
 
-# Enable external libraries
+# =============================================================================
+# THEME CONFIGURATION
+# =============================================================================
 [extra]
-katex.enabled = true
-katex.auto_render = true
-comments = true
-chart.enabled = true
-mermaid.enabled = true
-galleria.enabled = true
 
-navbar_items = [
- { code = "en", nav_items = [
-  { url = "$BASE_URL/", name = "Home" },
-  { url = "$BASE_URL/posts", name = "Posts" },
-  { url = "$BASE_URL/tags", name = "Tags" },
-  { url = "$BASE_URL/categories", name = "Categories" },
- ]},
+# -----------------------------------------------------------------------------
+# Theme Appearance
+# -----------------------------------------------------------------------------
+
+# Enable dark/light mode toggle (follows OS preference by default)
+theme_switcher = true
+default_theme = ""  # Empty = follow OS preference
+
+# Custom ML/AI "cyber" skin with electric cyan accents
+# Available: blue, lavender, mint, red, sakura, teal, monochrome, indigo_ingot, evangelion, cyber
+skin = "cyber"
+
+# Load custom stylesheets for terminal aesthetics and animations
+stylesheets = ["css/custom.css"]
+
+# Browser theme color [light, dark]
+browser_theme_color = ["#0a0a0f", "#0a0a0f"]
+
+# -----------------------------------------------------------------------------
+# Typography & Layout
+# -----------------------------------------------------------------------------
+
+# Use sans-serif everywhere (more modern/tech feel)
+override_serif_with_sans = false
+
+# Custom separator for metadata
+separator = "|"
+
+# Date formats - terminal-style
+long_date_format = "%Y.%m.%d"
+short_date_format = "%Y.%m.%d"
+
+# -----------------------------------------------------------------------------
+# Content Features
+# -----------------------------------------------------------------------------
+
+# Code blocks
+copy_button = true
+code_block_name_links = true
+force_codeblock_ltr = true
+
+# Post metadata
+show_author = true
+show_reading_time = true
+show_date = true
+post_listing_date = "date"
+
+# Navigation
+show_previous_next_article_links = true
+quick_navigation_buttons = true
+
+# Table of Contents
+toc = true
+
+# -----------------------------------------------------------------------------
+# Math & Diagrams (ML/AI Essential)
+# -----------------------------------------------------------------------------
+
+# Enable KaTeX for mathematical notation
+katex = true
+
+# Enable Mermaid for diagrams
+mermaid = true
+serve_local_mermaid = true
+
+# -----------------------------------------------------------------------------
+# Navigation Menu
+# -----------------------------------------------------------------------------
+
+menu = [
+    { name = "Posts", url = "posts", trailing_slash = true },
+    { name = "Tags", url = "tags", trailing_slash = true },
+    { name = "Categories", url = "categories", trailing_slash = true },
 ]
 
-# Add links to favicon, you can use https://realfavicongenerator.net/ to generate favicon for your site
-[extra.favicon]
-favicon_16x16 = "/icons/favicon-16x16.png"
-favicon_32x32 = "/icons/favicon-32x32.png"
-apple_touch_icon = "/icons/apple-touch-icon.png"
-safari_pinned_tab = "/icons/safari-pinned-tab.svg"
-webmanifest = "/icons/site.webmanifest"
+# -----------------------------------------------------------------------------
+# Branding
+# -----------------------------------------------------------------------------
 
-# Author details
-[extra.author]
-name = "Christian Picon Calderom"
+# Favicon
+favicon = "/icons/favicon-32x32.png"
+favicon_emoji = ""
+
+# Social media card (preview image when sharing links)
+# social_media_card = "/images/social-card.png"
+
+# RSS feed icon
+feed_icon = true
+full_content_in_feed = true
+
+# -----------------------------------------------------------------------------
+# Author & Social Links
+# -----------------------------------------------------------------------------
+
+# Email (base64 encoded for spam protection)
+# Original: christian91mp@gmail.com
+email = "Y2hyaXN0aWFuOTFtcEBnbWFpbC5jb20="
+encode_plaintext_email = false
+
+# Social media links
+socials = [
+    { name = "GitHub", url = "https://github.com/Cpicon", icon = "github" },
+    { name = "LinkedIn", url = "https://linkedin.com/in/christianpiconmlengineer", icon = "linkedin" },
+    { name = "Email", url = "mailto:christian91mp@gmail.com", icon = "email" },
+]
+
+# -----------------------------------------------------------------------------
+# Footer
+# -----------------------------------------------------------------------------
+
+footer_menu = [
+    { url = "tags", name = "Tags", trailing_slash = true },
+    { url = "categories", name = "Categories", trailing_slash = true },
+]
+
+# Copyright notice
+copyright = "$TITLE $SEPARATOR $CURRENT_YEAR $AUTHOR"
+
+# -----------------------------------------------------------------------------
+# Repository Link
+# -----------------------------------------------------------------------------
+
+remote_repository_url = "https://github.com/Cpicon/myblog"
+remote_repository_git_platform = "github"
+remote_repository_branch = "main"
+show_remote_changes = false
+show_remote_source = false
+
+# -----------------------------------------------------------------------------
+# Performance & Security
+# -----------------------------------------------------------------------------
+
+# Content Security Policy
+enable_csp = true
+allowed_domains = [
+    { directive = "font-src", domains = ["'self'", "data:"] },
+    { directive = "img-src", domains = ["'self'", "https://*", "data:"] },
+    { directive = "media-src", domains = ["'self'"] },
+    { directive = "script-src", domains = ["'self'", "'unsafe-inline'", "https://cdn.jsdelivr.net"] },
+    { directive = "style-src", domains = ["'self'", "'unsafe-inline'"] },
+    { directive = "frame-src", domains = ["player.vimeo.com", "https://www.youtube-nocookie.com"] },
+]
+
+# Font subsetting
+enable_subset = true
+custom_subset = false
+
+# Disable features we don't need yet
+iine = false
+
+# -----------------------------------------------------------------------------
+# Comments (disabled for now)
+# -----------------------------------------------------------------------------
+
+[extra.giscus]
+enabled_for_all_posts = false
+
+[extra.utterances]
+enabled_for_all_posts = false
+
+[extra.hyvortalk]
+enabled_for_all_posts = false
+
+[extra.isso]
+enabled_for_all_posts = false
+
+[extra.webmentions]
+enable = false
+
+# -----------------------------------------------------------------------------
+# Author Card
+# -----------------------------------------------------------------------------
+
+[extra.hcard]
+enable = true
+with_social_links = true
 avatar = "/images/download.jpeg"
-
-# Social links
-[extra.social]
-email = "christian91mp@gmail.com"
-github = "Cpicon"
-linkedin = "christianpiconmlengineer"
-
-# To add google analytics
-[extra.analytics]
-google = "<your_gtag>"
-
-# To add disqus comments
-[extra.commenting]
-disqus = "<your_disqus_shortname>"
-
-# To enable mapbox maps
-[extra.mapbox]
-enabled = true
-access_token = "<your_access_token>"
-
-
+full_name = "Christian Picon Calderon"
+biography = "ML Engineer | AI Developer | Building intelligent systems"

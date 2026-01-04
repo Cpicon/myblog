@@ -1,0 +1,435 @@
+/* =============================================================================
+   FUTURE WITH ML - Custom Styles
+   ML/AI Engineering Aesthetic with Terminal Effects
+   ============================================================================= */
+
+/* -----------------------------------------------------------------------------
+   Typography Enhancements
+   ----------------------------------------------------------------------------- */
+
+/* Use JetBrains Mono for code and terminal elements */
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+    --terminal-font: 'JetBrains Mono', 'Cascadia Code', 'Fira Code', monospace;
+}
+
+/* Terminal-style headings (optional class) */
+.terminal-heading {
+    font-family: var(--terminal-font);
+    letter-spacing: -0.02em;
+}
+
+.terminal-heading::before {
+    content: "$ ";
+    opacity: 0.5;
+}
+
+/* -----------------------------------------------------------------------------
+   Code Block Terminal Styling
+   ----------------------------------------------------------------------------- */
+
+/* Terminal window chrome */
+pre {
+    position: relative;
+    border: 1px solid var(--divider-color);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+/* Terminal dots - only in dark mode for full effect */
+[data-theme='dark'] pre::before,
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme='light']) pre::before {
+        content: "●  ●  ●";
+        display: block;
+        padding: 8px 12px;
+        background: var(--bg-0);
+        border-bottom: 1px solid var(--divider-color);
+        color: rgba(255, 255, 255, 0.25);
+        font-size: 10px;
+        letter-spacing: 4px;
+    }
+}
+
+/* Code block glow effect on hover */
+pre:hover {
+    box-shadow: var(--glow-cyan);
+    transition: box-shadow 0.3s ease;
+}
+
+/* Inline code styling */
+code:not(pre code) {
+    font-family: var(--terminal-font);
+    background: var(--bg-0);
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.9em;
+    border: 1px solid var(--divider-color);
+}
+
+/* -----------------------------------------------------------------------------
+   Link Animations
+   ----------------------------------------------------------------------------- */
+
+/* Underline reveal on hover */
+a:not(.header-anchor):not(.nav-link) {
+    position: relative;
+    text-decoration: none;
+}
+
+a:not(.header-anchor):not(.nav-link)::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 0;
+    height: 2px;
+    background: var(--primary-color);
+    transition: width 0.3s ease;
+}
+
+a:not(.header-anchor):not(.nav-link):hover::after {
+    width: 100%;
+}
+
+/* Navigation link hover effect */
+nav a {
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+nav a:hover {
+    color: var(--primary-color);
+}
+
+/* -----------------------------------------------------------------------------
+   Card & Post Enhancements
+   ----------------------------------------------------------------------------- */
+
+/* Post card hover effect */
+.post-card,
+article.post-preview,
+.cards article {
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    border-radius: 8px;
+}
+
+.post-card:hover,
+article.post-preview:hover,
+.cards article:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--glow-cyan);
+}
+
+/* Tag badges */
+.tags a,
+a[href*="/tags/"] {
+    display: inline-block;
+    padding: 2px 8px;
+    margin: 2px;
+    background: var(--bg-0);
+    border: 1px solid var(--divider-color);
+    border-radius: 4px;
+    font-size: 0.85em;
+    font-family: var(--terminal-font);
+    transition: all 0.2s ease;
+}
+
+.tags a:hover,
+a[href*="/tags/"]:hover {
+    background: var(--primary-color);
+    color: var(--background-color);
+    border-color: var(--primary-color);
+}
+
+/* Category badges with different accent */
+a[href*="/categories/"] {
+    border-color: var(--accent-purple);
+}
+
+a[href*="/categories/"]:hover {
+    background: var(--accent-purple);
+    border-color: var(--accent-purple);
+}
+
+/* -----------------------------------------------------------------------------
+   Theme Switcher Enhancement
+   ----------------------------------------------------------------------------- */
+
+/* Smooth theme transition */
+html {
+    transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Theme switcher glow on hover */
+.theme-switcher:hover {
+    filter: drop-shadow(0 0 8px var(--primary-color));
+}
+
+/* -----------------------------------------------------------------------------
+   Scroll Progress Bar
+   ----------------------------------------------------------------------------- */
+
+.scroll-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 0%;
+    height: 3px;
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+    z-index: 9999;
+    transition: width 0.1s linear;
+}
+
+/* -----------------------------------------------------------------------------
+   Hero Section Styles (for custom homepage)
+   ----------------------------------------------------------------------------- */
+
+.hero {
+    position: relative;
+    min-height: 60vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+    padding: 4rem 2rem;
+    overflow: hidden;
+}
+
+.hero-title {
+    font-size: clamp(2rem, 5vw, 3.5rem);
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+    color: var(--text-color-high-contrast);
+}
+
+.hero-subtitle {
+    font-family: var(--terminal-font);
+    font-size: clamp(1rem, 2vw, 1.25rem);
+    color: var(--primary-color);
+    margin-bottom: 2rem;
+}
+
+/* Typing cursor animation */
+.typing-cursor {
+    display: inline-block;
+    width: 2px;
+    height: 1.2em;
+    background: var(--primary-color);
+    margin-left: 2px;
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+    0%, 50% { opacity: 1; }
+    51%, 100% { opacity: 0; }
+}
+
+/* Social links in hero */
+.hero-social {
+    display: flex;
+    gap: 1.5rem;
+    margin-top: 2rem;
+}
+
+.hero-social a {
+    color: var(--text-color);
+    transition: color 0.2s ease, transform 0.2s ease;
+}
+
+.hero-social a:hover {
+    color: var(--primary-color);
+    transform: scale(1.1);
+}
+
+/* -----------------------------------------------------------------------------
+   Neural Network Background Canvas
+   ----------------------------------------------------------------------------- */
+
+#neural-canvas {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+    #neural-canvas {
+        display: none;
+    }
+
+    .typing-cursor {
+        animation: none;
+    }
+
+    a::after {
+        transition: none !important;
+    }
+
+    .post-card,
+    article.post-preview,
+    .cards article {
+        transition: none !important;
+    }
+}
+
+/* -----------------------------------------------------------------------------
+   Skills/Tech Stack Badges
+   ----------------------------------------------------------------------------- */
+
+.skill-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: var(--bg-0);
+    border: 1px solid var(--divider-color);
+    border-radius: 6px;
+    font-family: var(--terminal-font);
+    font-size: 0.9rem;
+    transition: all 0.2s ease;
+}
+
+.skill-badge:hover {
+    border-color: var(--primary-color);
+    box-shadow: var(--glow-cyan);
+}
+
+.skill-badge-icon {
+    width: 20px;
+    height: 20px;
+}
+
+/* Skill categories */
+.skill-badge.ml { border-left: 3px solid var(--accent-green); }
+.skill-badge.ai { border-left: 3px solid var(--accent-cyan); }
+.skill-badge.data { border-left: 3px solid var(--accent-purple); }
+.skill-badge.devops { border-left: 3px solid var(--accent-orange); }
+
+/* -----------------------------------------------------------------------------
+   Page Transitions (Fade In)
+   ----------------------------------------------------------------------------- */
+
+.content {
+    animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* -----------------------------------------------------------------------------
+   Blockquote Styling
+   ----------------------------------------------------------------------------- */
+
+blockquote {
+    border-left: 3px solid var(--primary-color);
+    padding-left: 1rem;
+    margin-left: 0;
+    font-style: italic;
+    background: var(--bg-0);
+    padding: 1rem;
+    border-radius: 0 8px 8px 0;
+}
+
+/* -----------------------------------------------------------------------------
+   Table Styling
+   ----------------------------------------------------------------------------- */
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+    margin: 1.5rem 0;
+    font-family: var(--terminal-font);
+    font-size: 0.9rem;
+}
+
+th {
+    background: var(--bg-0);
+    border: 1px solid var(--divider-color);
+    padding: 0.75rem 1rem;
+    text-align: left;
+    font-weight: 600;
+}
+
+td {
+    border: 1px solid var(--divider-color);
+    padding: 0.75rem 1rem;
+}
+
+tr:hover td {
+    background: var(--bg-0);
+}
+
+/* -----------------------------------------------------------------------------
+   Reading Progress Indicator (requires JS)
+   ----------------------------------------------------------------------------- */
+
+.reading-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: transparent;
+    z-index: 9999;
+}
+
+.reading-progress-bar {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent-cyan), var(--accent-green));
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+/* -----------------------------------------------------------------------------
+   Mobile Responsiveness
+   ----------------------------------------------------------------------------- */
+
+@media (max-width: 768px) {
+    .hero {
+        min-height: 50vh;
+        padding: 2rem 1rem;
+    }
+
+    .hero-social {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    /* Disable complex effects on mobile for performance */
+    #neural-canvas {
+        opacity: 0.3;
+    }
+}
+
+/* -----------------------------------------------------------------------------
+   Print Styles
+   ----------------------------------------------------------------------------- */
+
+@media print {
+    .hero,
+    #neural-canvas,
+    .theme-switcher,
+    .scroll-progress,
+    .reading-progress {
+        display: none !important;
+    }
+
+    a::after {
+        display: none !important;
+    }
+}
