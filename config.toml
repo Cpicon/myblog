@@ -14,11 +14,25 @@ build_search_index = true
 default_language = "en"
 theme = "tabi"
 
-# Taxonomies
+# Taxonomies (global for default language)
 taxonomies = [
     { name = "categories", feed = true },
     { name = "tags", feed = true },
 ]
+
+# =============================================================================
+# SPANISH LANGUAGE CONFIGURATION
+# =============================================================================
+[languages.es]
+title = "Future With ML"
+description = "Patrones de Diseño en Machine Learning, MLOps e Ingeniería de IA por Christian Picon Calderon"
+generate_feeds = true
+build_search_index = true
+taxonomies = [
+    { name = "categories", feed = true },
+    { name = "tags", feed = true },
+]
+# Note: Spanish UI translations are handled by themes/tabi/i18n/es.toml
 
 # Search configuration
 [search]
