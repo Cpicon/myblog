@@ -1,0 +1,301 @@
+{#
+    Comparison/Mode Visualization
+
+    Shows side-by-side or stacked comparison of two modes.
+
+    Usage:
+    {{ comparison(
+        mode1_title="Normal Mode",
+        mode1_steps="Phase 1: Execute,Phase 3: Execute,Phase 6: Execute",
+        mode2_title="Fallback Mode",
+        mode2_steps="Phase 1: Skip,Phase 3: Skip,Phase 6: Local",
+        shared_title="Intelligence Layer",
+        shared_steps="Phase 4: Reasoning,Phase 5: Formatting"
+    ) }}
+#}
+{% set viz_id = id | default(value="comparison-" ~ now() | truncate(length=8, end="")) %}
+{% set m1_title = mode1_title | default(value="Mode 1") %}
+{% set m1_steps = mode1_steps | default(value="Step 1,Step 2") | split(pat=",") %}
+{% set m2_title = mode2_title | default(value="Mode 2") %}
+{% set m2_steps = mode2_steps | default(value="Step 1,Step 2") | split(pat=",") %}
+{% set s_title = shared_title | default(value="Shared") %}
+{% set s_steps = shared_steps | default(value="Shared Step") | split(pat=",") %}
+
+<div class="comparison-container" id="{{ viz_id }}">
+    <canvas class="comparison-canvas" aria-label="Mode comparison visualization"></canvas>
+</div>
+
+<script>
+(function() {
+    const containerId = '{{ viz_id }}';
+    const mode1Title = '{{ m1_title }}';
+    const mode1Steps = [{% for step in m1_steps %}'{{ step | trim }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+    const mode2Title = '{{ m2_title }}';
+    const mode2Steps = [{% for step in m2_steps %}'{{ step | trim }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+    const sharedTitle = '{{ s_title }}';
+    const sharedSteps = [{% for step in s_steps %}'{{ step | trim }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+
+    function initComparison() {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const canvas = container.querySelector('.comparison-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let particles = [];
+        let time = 0;
+
+        const colors = {
+            mode1: '#00d4ff',
+            mode2: '#ff8800',
+            shared: '#00ff88',
+            skip: '#444466',
+            particle: '#00ff88',
+            connection: 'rgba(255, 255, 255, 0.2)',
+            text: '#e0e0e4',
+            subtext: '#8888a0'
+        };
+
+        function resize() {
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = 320;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const leftX = canvas.width * 0.25;
+            const rightX = canvas.width * 0.75;
+            const centerX = canvas.width / 2;
+
+            const headerY = 35;
+            const stepsStartY = 80;
+            const stepSpacing = 45;
+            const sharedY = 240;
+
+            // Draw mode headers
+            function drawHeader(x, title, color) {
+                ctx.fillStyle = color;
+                ctx.font = 'bold 14px JetBrains Mono';
+                ctx.textAlign = 'center';
+                ctx.shadowColor = color;
+                ctx.shadowBlur = 10;
+                ctx.fillText(title, x, headerY);
+                ctx.shadowBlur = 0;
+
+                // Underline
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.moveTo(x - 60, headerY + 8);
+                ctx.lineTo(x + 60, headerY + 8);
+                ctx.stroke();
+            }
+
+            drawHeader(leftX, mode1Title, colors.mode1);
+            drawHeader(rightX, mode2Title, colors.mode2);
+
+            // Draw steps for each mode
+            function drawStep(x, y, text, color, isSkip) {
+                const width = 130;
+                const height = 32;
+
+                ctx.shadowColor = color;
+                ctx.shadowBlur = isSkip ? 0 : 12;
+
+                ctx.fillStyle = isSkip ? colors.skip : color;
+                ctx.beginPath();
+                ctx.roundRect(x - width/2, y - height/2, width, height, 6);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+
+                if (!isSkip) {
+                    ctx.strokeStyle = '#00ff88';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                } else {
+                    ctx.setLineDash([4, 4]);
+                    ctx.strokeStyle = '#666';
+                    ctx.lineWidth = 1;
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+                }
+
+                ctx.fillStyle = isSkip ? '#666' : '#0a0a0f';
+                ctx.font = isSkip ? '10px JetBrains Mono' : 'bold 10px JetBrains Mono';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(text, x, y);
+
+                return { x, y, width, height };
+            }
+
+            // Mode 1 steps
+            const mode1Nodes = [];
+            mode1Steps.forEach((step, i) => {
+                const y = stepsStartY + i * stepSpacing;
+                mode1Nodes.push(drawStep(leftX, y, step, colors.mode1, false));
+            });
+
+            // Mode 2 steps
+            const mode2Nodes = [];
+            mode2Steps.forEach((step, i) => {
+                const y = stepsStartY + i * stepSpacing;
+                const isSkip = step.toLowerCase().includes('skip');
+                mode2Nodes.push(drawStep(rightX, y, step, colors.mode2, isSkip));
+            });
+
+            // Connections between steps
+            ctx.strokeStyle = colors.connection;
+            ctx.lineWidth = 1;
+
+            for (let i = 0; i < mode1Nodes.length - 1; i++) {
+                const from = mode1Nodes[i];
+                const to = mode1Nodes[i + 1];
+                ctx.beginPath();
+                ctx.moveTo(from.x, from.y + from.height/2);
+                ctx.lineTo(to.x, to.y - to.height/2);
+                ctx.stroke();
+            }
+
+            for (let i = 0; i < mode2Nodes.length - 1; i++) {
+                const from = mode2Nodes[i];
+                const to = mode2Nodes[i + 1];
+                ctx.beginPath();
+                ctx.moveTo(from.x, from.y + from.height/2);
+                ctx.lineTo(to.x, to.y - to.height/2);
+                ctx.stroke();
+            }
+
+            // Shared section
+            ctx.fillStyle = colors.shared;
+            ctx.font = 'bold 13px JetBrains Mono';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = colors.shared;
+            ctx.shadowBlur = 10;
+            ctx.fillText(sharedTitle, centerX, sharedY - 25);
+            ctx.shadowBlur = 0;
+
+            // Shared steps box
+            const sharedWidth = 200;
+            const sharedHeight = 50;
+            ctx.fillStyle = 'rgba(0, 255, 136, 0.15)';
+            ctx.strokeStyle = colors.shared;
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.roundRect(centerX - sharedWidth/2, sharedY - 10, sharedWidth, sharedHeight, 8);
+            ctx.fill();
+            ctx.stroke();
+
+            // Shared step text
+            ctx.fillStyle = colors.text;
+            ctx.font = '11px JetBrains Mono';
+            sharedSteps.forEach((step, i) => {
+                ctx.fillText(step, centerX, sharedY + 8 + i * 16);
+            });
+
+            // Arrows from both modes to shared
+            ctx.strokeStyle = colors.connection;
+            ctx.lineWidth = 2;
+
+            // Left arrow
+            const lastMode1 = mode1Nodes[mode1Nodes.length - 1];
+            ctx.beginPath();
+            ctx.moveTo(lastMode1.x, lastMode1.y + lastMode1.height/2);
+            ctx.quadraticCurveTo(lastMode1.x, sharedY - 30, centerX - sharedWidth/2, sharedY + 15);
+            ctx.stroke();
+
+            // Right arrow
+            const lastMode2 = mode2Nodes[mode2Nodes.length - 1];
+            ctx.beginPath();
+            ctx.moveTo(lastMode2.x, lastMode2.y + lastMode2.height/2);
+            ctx.quadraticCurveTo(lastMode2.x, sharedY - 30, centerX + sharedWidth/2, sharedY + 15);
+            ctx.stroke();
+
+            // "Always Active" badge
+            ctx.fillStyle = colors.shared;
+            ctx.font = 'bold 9px JetBrains Mono';
+            ctx.fillText('✓ ALWAYS ACTIVE', centerX, sharedY + sharedHeight + 8);
+
+            // Animate particles
+            particles.forEach(p => {
+                p.progress += p.speed;
+                if (p.progress >= 1) {
+                    p.progress = 0;
+                    p.side = p.side === 'left' ? 'right' : 'left';
+                }
+
+                const nodes = p.side === 'left' ? mode1Nodes : mode2Nodes;
+                const segmentIndex = Math.floor(p.progress * nodes.length);
+                const segmentProgress = (p.progress * nodes.length) % 1;
+
+                if (segmentIndex < nodes.length - 1) {
+                    const from = nodes[segmentIndex];
+                    const to = nodes[segmentIndex + 1];
+                    const x = from.x + (to.x - from.x) * segmentProgress;
+                    const y = from.y + (to.y - from.y) * segmentProgress;
+
+                    ctx.fillStyle = colors.particle;
+                    ctx.shadowColor = colors.particle;
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            });
+
+            time++;
+            requestAnimationFrame(draw);
+        }
+
+        // Initialize particles
+        particles.push({ side: 'left', progress: 0, speed: 0.008 });
+        particles.push({ side: 'right', progress: 0.5, speed: 0.008 });
+
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            draw();
+        } else {
+            draw();
+            // Just draw once for static
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initComparison);
+    } else {
+        initComparison();
+    }
+})();
+</script>
+
+<style>
+.comparison-container {
+    background: var(--bg-0);
+    border: 1px solid var(--divider-color);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    position: relative;
+}
+
+.comparison-canvas {
+    width: 100%;
+    height: 320px;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .comparison-container {
+        overflow-x: auto;
+    }
+
+    .comparison-canvas {
+        min-width: 500px;
+    }
+}
+</style>

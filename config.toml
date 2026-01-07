@@ -13,6 +13,7 @@ minify_html = true
 build_search_index = true
 default_language = "en"
 theme = "tabi"
+ignored_content = ["CLAUDE.md", "**/CLAUDE.md"]
 
 # Taxonomies (global for default language)
 taxonomies = [
@@ -103,6 +104,7 @@ post_listing_date = "date"
 
 # Navigation
 show_previous_next_article_links = true
+invert_previous_next_article_links = true
 quick_navigation_buttons = true
 
 # Table of Contents
