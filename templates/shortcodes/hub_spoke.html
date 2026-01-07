@@ -1,0 +1,381 @@
+{#
+    Hub-and-Spoke Agent Topology Visualization
+
+    Usage:
+    {% hub_spoke(hub="Main Agent", spokes="Agent1,Agent2,Agent3") %}{% end %}
+
+    Parameters:
+    - hub: Name of the central hub agent
+    - spokes: Comma-separated list of spoke agent names
+    - user: Show user node at top (default: true)
+    - command: Show command node (default: true)
+#}
+{% set viz_id = id | default(value="hub-spoke-" ~ now() | truncate(length=8, end="")) %}
+{% set hub_name = hub | default(value="Hub Agent") %}
+{% set spoke_list = spokes | default(value="Agent 1,Agent 2,Agent 3") | split(pat=",") %}
+{% set show_user = user | default(value=true) %}
+{% set show_command = command | default(value=true) %}
+
+<div class="hub-spoke-container" id="{{ viz_id }}">
+    <canvas class="hub-spoke-canvas" aria-label="Hub-and-spoke agent topology visualization"></canvas>
+    <div class="hub-spoke-info">
+        <span class="info-label">Topology</span>
+        <span class="info-value">Hub-and-Spoke</span>
+    </div>
+</div>
+
+<script>
+(function() {
+    const containerId = '{{ viz_id }}';
+
+    // Decode HTML entities (Tera encodes / as &#x2F;)
+    function decodeHTML(str) {
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = str;
+        return textarea.value;
+    }
+
+    const hubName = decodeHTML('{{ hub_name }}');
+    const spokeNames = [{% for spoke in spoke_list %}decodeHTML('{{ spoke | trim }}'){% if not loop.last %}, {% endif %}{% endfor %}];
+    const showUser = {% if show_user %}true{% else %}false{% endif %};
+    const showCommand = {% if show_command %}true{% else %}false{% endif %};
+
+    function initHubSpoke() {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const canvas = container.querySelector('.hub-spoke-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let particles = [];
+        let time = 0;
+
+        // Colors
+        const colors = {
+            user: '#ff0080',
+            command: '#ff8800',
+            hub: '#00d4ff',
+            spoke: '#8b5cf6',
+            particle: '#00ff88',
+            connection: 'rgba(0, 212, 255, 0.3)'
+        };
+
+        function resize() {
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = 300;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        // Get node positions
+        function getNodes() {
+            const centerX = canvas.width / 2;
+            const centerY = canvas.height / 2 + 20;
+            const spokeRadius = Math.min(canvas.width * 0.35, 120);
+
+            const nodes = [];
+
+            // User node
+            if (showUser) {
+                nodes.push({
+                    type: 'user',
+                    label: 'User',
+                    x: centerX,
+                    y: 40,
+                    radius: 20,
+                    color: colors.user
+                });
+            }
+
+            // Command node
+            if (showCommand) {
+                nodes.push({
+                    type: 'command',
+                    label: 'Command',
+                    x: centerX,
+                    y: showUser ? 100 : 50,
+                    radius: 22,
+                    color: colors.command
+                });
+            }
+
+            // Hub node
+            const hubY = showUser && showCommand ? centerY : centerY - 30;
+            nodes.push({
+                type: 'hub',
+                label: hubName,
+                x: centerX,
+                y: hubY,
+                radius: 32,
+                color: colors.hub
+            });
+
+            // Spoke nodes
+            const spokeCount = spokeNames.length;
+            const angleStep = Math.PI / (spokeCount + 1);
+            const startAngle = Math.PI;
+
+            spokeNames.forEach((name, i) => {
+                const angle = startAngle - angleStep * (i + 1);
+                nodes.push({
+                    type: 'spoke',
+                    label: name,
+                    x: centerX + Math.cos(angle) * spokeRadius,
+                    y: hubY + Math.sin(angle) * spokeRadius * 0.7,
+                    radius: 24,
+                    color: colors.spoke
+                });
+            });
+
+            return nodes;
+        }
+
+        function createParticle(from, to) {
+            return {
+                fromX: from.x,
+                fromY: from.y,
+                toX: to.x,
+                toY: to.y,
+                progress: Math.random(),
+                speed: 0.005 + Math.random() * 0.003,
+                x: from.x,
+                y: from.y
+            };
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const nodes = getNodes();
+
+            const hub = nodes.find(n => n.type === 'hub');
+            const spokes = nodes.filter(n => n.type === 'spoke');
+            const command = nodes.find(n => n.type === 'command');
+            const user = nodes.find(n => n.type === 'user');
+
+            // Draw connections
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = colors.connection;
+
+            // User -> Command
+            if (user && command) {
+                ctx.beginPath();
+                ctx.moveTo(user.x, user.y + user.radius);
+                ctx.lineTo(command.x, command.y - command.radius);
+                ctx.stroke();
+            }
+
+            // Command -> Hub
+            if (command && hub) {
+                ctx.beginPath();
+                ctx.moveTo(command.x, command.y + command.radius);
+                ctx.lineTo(hub.x, hub.y - hub.radius);
+                ctx.stroke();
+            } else if (user && hub) {
+                ctx.beginPath();
+                ctx.moveTo(user.x, user.y + user.radius);
+                ctx.lineTo(hub.x, hub.y - hub.radius);
+                ctx.stroke();
+            }
+
+            // Hub -> Spokes
+            spokes.forEach(spoke => {
+                ctx.beginPath();
+                ctx.moveTo(hub.x, hub.y);
+                ctx.lineTo(spoke.x, spoke.y);
+                ctx.stroke();
+            });
+
+            // Draw nodes
+            nodes.forEach(node => {
+                // Glow
+                const gradient = ctx.createRadialGradient(
+                    node.x, node.y, 0,
+                    node.x, node.y, node.radius * 2
+                );
+                gradient.addColorStop(0, node.color.replace(')', ', 0.3)').replace('#', 'rgba(').replace(/^rgba\(([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})/, (m, r, g, b) => `rgba(${parseInt(r, 16)}, ${parseInt(g, 16)}, ${parseInt(b, 16)}`));
+                gradient.addColorStop(1, 'transparent');
+
+                // Simpler glow approach
+                ctx.shadowColor = node.color;
+                ctx.shadowBlur = 15;
+
+                // Node circle
+                ctx.fillStyle = node.color;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+
+                // Border
+                ctx.strokeStyle = node.color;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Label
+                ctx.fillStyle = '#e0e0e4';
+                ctx.font = node.type === 'hub' ? 'bold 11px JetBrains Mono' : '10px JetBrains Mono';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // Wrap long labels
+                const maxWidth = node.radius * 1.8;
+                const words = node.label.split(' ');
+                if (words.length > 1 && ctx.measureText(node.label).width > maxWidth) {
+                    ctx.fillText(words[0], node.x, node.y - 6);
+                    ctx.fillText(words.slice(1).join(' '), node.x, node.y + 6);
+                } else {
+                    ctx.fillText(node.label, node.x, node.y);
+                }
+
+                // Type indicator below node
+                if (node.type === 'hub') {
+                    ctx.fillStyle = '#8888a0';
+                    ctx.font = '9px JetBrains Mono';
+                    ctx.fillText('(Hub)', node.x, node.y + node.radius + 14);
+                }
+            });
+
+            // Update and draw particles
+            particles.forEach(p => {
+                p.progress += p.speed;
+                if (p.progress >= 1) {
+                    p.progress = 0;
+                    // Reverse direction
+                    [p.fromX, p.toX] = [p.toX, p.fromX];
+                    [p.fromY, p.toY] = [p.toY, p.fromY];
+                }
+
+                const ease = p.progress * p.progress * (3 - 2 * p.progress);
+                p.x = p.fromX + (p.toX - p.fromX) * ease;
+                p.y = p.fromY + (p.toY - p.fromY) * ease;
+
+                ctx.fillStyle = colors.particle;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Glow
+                ctx.shadowColor = colors.particle;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 3, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+
+            time++;
+            requestAnimationFrame(draw);
+        }
+
+        // Initialize particles
+        const nodes = getNodes();
+        const hub = nodes.find(n => n.type === 'hub');
+        const spokes = nodes.filter(n => n.type === 'spoke');
+
+        spokes.forEach(spoke => {
+            particles.push(createParticle(hub, spoke));
+        });
+
+        // Respect reduced motion
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            draw();
+        } else {
+            // Static version
+            const nodes = getNodes();
+            const hub = nodes.find(n => n.type === 'hub');
+            const spokes = nodes.filter(n => n.type === 'spoke');
+            const command = nodes.find(n => n.type === 'command');
+            const user = nodes.find(n => n.type === 'user');
+
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = colors.connection;
+
+            if (user && command) {
+                ctx.beginPath();
+                ctx.moveTo(user.x, user.y + user.radius);
+                ctx.lineTo(command.x, command.y - command.radius);
+                ctx.stroke();
+            }
+
+            if (command && hub) {
+                ctx.beginPath();
+                ctx.moveTo(command.x, command.y + command.radius);
+                ctx.lineTo(hub.x, hub.y - hub.radius);
+                ctx.stroke();
+            }
+
+            spokes.forEach(spoke => {
+                ctx.beginPath();
+                ctx.moveTo(hub.x, hub.y);
+                ctx.lineTo(spoke.x, spoke.y);
+                ctx.stroke();
+            });
+
+            nodes.forEach(node => {
+                ctx.fillStyle = node.color;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#e0e0e4';
+                ctx.font = node.type === 'hub' ? 'bold 11px JetBrains Mono' : '10px JetBrains Mono';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(node.label, node.x, node.y);
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initHubSpoke);
+    } else {
+        initHubSpoke();
+    }
+})();
+</script>
+
+<style>
+.hub-spoke-container {
+    background: var(--bg-0);
+    border: 1px solid var(--divider-color);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    position: relative;
+}
+
+.hub-spoke-canvas {
+    width: 100%;
+    height: 300px;
+    display: block;
+}
+
+.hub-spoke-info {
+    position: absolute;
+    bottom: 1rem;
+    right: 1rem;
+    background: rgba(0, 0, 0, 0.6);
+    padding: 0.5rem 0.75rem;
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+}
+
+.hub-spoke-info .info-label {
+    color: var(--meta-color);
+    display: block;
+    margin-bottom: 0.25rem;
+}
+
+.hub-spoke-info .info-value {
+    color: #00d4ff;
+}
+
+@media (max-width: 768px) {
+    .hub-spoke-canvas {
+        height: 250px;
+    }
+}
+</style>

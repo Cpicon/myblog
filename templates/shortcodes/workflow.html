@@ -1,0 +1,252 @@
+{#
+    Workflow Visualization Shortcode
+
+    Creates an animated vertical flowchart with connected steps.
+
+    Usage:
+    {{ workflow(steps="Step 1|Description,Step 2|Description,Step 3|Description") }}
+#}
+{% set viz_id = id | default(value="workflow-" ~ now() | truncate(length=8, end="")) %}
+{% set step_list = steps | default(value="Step 1|Desc,Step 2|Desc") | split(pat=",") %}
+
+<div class="workflow-container" id="{{ viz_id }}">
+    <canvas class="workflow-canvas" aria-label="Workflow visualization"></canvas>
+</div>
+
+<script>
+(function() {
+    const containerId = '{{ viz_id }}';
+
+    // Decode HTML entities (Tera encodes / as &#x2F;)
+    function decodeHTML(str) {
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = str;
+        return textarea.value;
+    }
+
+    const stepsData = [
+        {% for step in step_list %}
+        {% set parts = step | split(pat="|") %}
+        { title: decodeHTML('{{ parts[0] | trim }}'), desc: decodeHTML('{{ parts[1] | default(value="") | trim }}') }{% if not loop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    function initWorkflow() {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const canvas = container.querySelector('.workflow-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let particles = [];
+        let time = 0;
+
+        const colors = {
+            primary: '#00d4ff',
+            secondary: '#8b5cf6',
+            accent: '#00ff88',
+            particle: '#00ff88',
+            connection: 'rgba(0, 212, 255, 0.4)',
+            text: '#e0e0e4',
+            subtext: '#8888a0'
+        };
+
+        function resize() {
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = Math.max(550, stepsData.length * 130 + 100);
+            container.style.height = canvas.height + 'px';
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        function getStepPositions() {
+            const centerX = canvas.width / 2;
+            const startY = 70;
+            const stepHeight = 120;
+
+            return stepsData.map((step, i) => ({
+                ...step,
+                x: centerX,
+                y: startY + i * stepHeight,
+                width: Math.min(450, canvas.width * 0.85),
+                height: 90,
+                color: i % 2 === 0 ? colors.primary : colors.secondary
+            }));
+        }
+
+        function createParticle(from, to) {
+            return {
+                fromX: from.x,
+                fromY: from.y + from.height / 2,
+                toX: to.x,
+                toY: to.y - to.height / 2,
+                progress: Math.random(),
+                speed: 0.008 + Math.random() * 0.004
+            };
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const positions = getStepPositions();
+
+            // Draw connections
+            ctx.strokeStyle = colors.connection;
+            ctx.lineWidth = 3;
+            for (let i = 0; i < positions.length - 1; i++) {
+                const from = positions[i];
+                const to = positions[i + 1];
+
+                ctx.beginPath();
+                ctx.moveTo(from.x, from.y + from.height / 2);
+                ctx.lineTo(to.x, to.y - to.height / 2);
+                ctx.stroke();
+
+                // Arrow
+                const midY = (from.y + from.height / 2 + to.y - to.height / 2) / 2;
+                ctx.fillStyle = colors.connection;
+                ctx.beginPath();
+                ctx.moveTo(from.x - 6, midY - 4);
+                ctx.lineTo(from.x, midY + 6);
+                ctx.lineTo(from.x + 6, midY - 4);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Draw step boxes
+            positions.forEach((pos, i) => {
+                const x = pos.x - pos.width / 2;
+                const y = pos.y - pos.height / 2;
+
+                // Glow
+                ctx.shadowColor = pos.color;
+                ctx.shadowBlur = 20;
+
+                // Box with rounded corners
+                ctx.fillStyle = pos.color;
+                ctx.beginPath();
+                const radius = 8;
+                ctx.moveTo(x + radius, y);
+                ctx.lineTo(x + pos.width - radius, y);
+                ctx.quadraticCurveTo(x + pos.width, y, x + pos.width, y + radius);
+                ctx.lineTo(x + pos.width, y + pos.height - radius);
+                ctx.quadraticCurveTo(x + pos.width, y + pos.height, x + pos.width - radius, y + pos.height);
+                ctx.lineTo(x + radius, y + pos.height);
+                ctx.quadraticCurveTo(x, y + pos.height, x, y + pos.height - radius);
+                ctx.lineTo(x, y + radius);
+                ctx.quadraticCurveTo(x, y, x + radius, y);
+                ctx.closePath();
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+
+                // Border
+                ctx.strokeStyle = colors.accent;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Step number
+                ctx.fillStyle = '#0a0a0f';
+                ctx.font = 'bold 18px JetBrains Mono, monospace';
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'middle';
+                ctx.fillText((i + 1) + '.', x + 16, pos.y);
+
+                // Title
+                ctx.fillStyle = '#0a0a0f';
+                ctx.font = 'bold 16px JetBrains Mono, monospace';
+                ctx.textAlign = 'center';
+                ctx.fillText(pos.title, pos.x + 12, pos.y - 10);
+
+                // Description (if exists)
+                if (pos.desc) {
+                    ctx.fillStyle = 'rgba(10, 10, 15, 0.8)';
+                    ctx.font = '14px JetBrains Mono, monospace';
+                    ctx.fillText(pos.desc, pos.x + 12, pos.y + 16);
+                }
+            });
+
+            // Update and draw particles
+            particles.forEach(p => {
+                p.progress += p.speed;
+                if (p.progress >= 1) {
+                    p.progress = 0;
+                }
+
+                const ease = p.progress * p.progress * (3 - 2 * p.progress);
+                const x = p.fromX + (p.toX - p.fromX) * ease;
+                const y = p.fromY + (p.toY - p.fromY) * ease;
+
+                ctx.fillStyle = colors.particle;
+                ctx.shadowColor = colors.particle;
+                ctx.shadowBlur = 12;
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+
+            time++;
+            requestAnimationFrame(draw);
+        }
+
+        // Initialize particles
+        const positions = getStepPositions();
+        for (let i = 0; i < positions.length - 1; i++) {
+            const p = createParticle(positions[i], positions[i + 1]);
+            p.progress = i * 0.3;
+            particles.push(p);
+        }
+
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            draw();
+        } else {
+            // Static version
+            const positions = getStepPositions();
+            positions.forEach((pos, i) => {
+                const x = pos.x - pos.width / 2;
+                const y = pos.y - pos.height / 2;
+
+                ctx.fillStyle = pos.color;
+                ctx.beginPath();
+                ctx.roundRect(x, y, pos.width, pos.height, 8);
+                ctx.fill();
+
+                ctx.fillStyle = '#0a0a0f';
+                ctx.font = 'bold 16px JetBrains Mono';
+                ctx.textAlign = 'center';
+                ctx.fillText(pos.title, pos.x, pos.y);
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initWorkflow);
+    } else {
+        initWorkflow();
+    }
+})();
+</script>
+
+<style>
+.workflow-container {
+    background: var(--bg-0);
+    border: 1px solid var(--divider-color);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    position: relative;
+    min-height: 550px;
+}
+
+.workflow-canvas {
+    width: 100%;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .workflow-container {
+        padding: 0.5rem;
+    }
+}
+</style>

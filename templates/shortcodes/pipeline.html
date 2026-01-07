@@ -1,0 +1,307 @@
+{#
+    Pipeline Flow Visualization Shortcode
+
+    Usage:
+    {% pipeline() %}
+    [
+        {"phase": 0, "owner": "Command", "label": "MCP Check", "io": "external"},
+        {"phase": 1, "owner": "Command", "label": "Project Resolution", "io": "external"},
+        {"phase": 2, "owner": "Command", "label": "Load Report", "io": "local"},
+        {"phase": 3, "owner": "Command", "label": "Duplicate Check", "io": "external"},
+        {"phase": 4, "owner": "Agent", "label": "Reasoning", "io": "none"},
+        {"phase": 5, "owner": "Agent", "label": "Formatting", "io": "none"},
+        {"phase": 6, "owner": "Command", "label": "Output", "io": "external"}
+    ]
+    {% end %}
+#}
+{% set pipeline_id = id | default(value="pipeline-" ~ now() | truncate(length=8, end="")) %}
+
+<div class="pipeline-container" id="{{ pipeline_id }}">
+    <canvas class="pipeline-canvas" aria-label="Pipeline flow visualization"></canvas>
+    <div class="pipeline-legend">
+        <span class="legend-item"><span class="legend-dot command"></span> Command (I/O)</span>
+        <span class="legend-item"><span class="legend-dot agent"></span> Agent (Intelligence)</span>
+    </div>
+</div>
+
+<script>
+(function() {
+    const containerId = '{{ pipeline_id }}';
+    const phasesData = {{ body | safe }};
+
+    function initPipeline() {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const canvas = container.querySelector('.pipeline-canvas');
+        const ctx = canvas.getContext('2d');
+
+        // Responsive sizing
+        function resize() {
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = 180;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        // Colors
+        const colors = {
+            command: '#00d4ff',
+            agent: '#00ff88',
+            external: '#8b5cf6',
+            local: '#ff8800',
+            none: '#444466',
+            particle: '#00ff88',
+            bg: 'rgba(10, 10, 15, 0.8)'
+        };
+
+        // Animation state
+        let particles = [];
+        let time = 0;
+
+        // Get phase positions
+        function getPhasePositions() {
+            const phases = phasesData;
+            const margin = 60;
+            const spacing = (canvas.width - margin * 2) / (phases.length - 1);
+            return phases.map((p, i) => ({
+                ...p,
+                x: margin + i * spacing,
+                y: canvas.height / 2,
+                radius: 24
+            }));
+        }
+
+        // Create particle
+        function createParticle(positions) {
+            return {
+                phaseIndex: 0,
+                progress: 0,
+                speed: 0.01 + Math.random() * 0.01,
+                x: positions[0].x,
+                y: positions[0].y
+            };
+        }
+
+        // Draw
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const positions = getPhasePositions();
+
+            // Draw connections
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.3)';
+            ctx.beginPath();
+            positions.forEach((pos, i) => {
+                if (i === 0) ctx.moveTo(pos.x, pos.y);
+                else ctx.lineTo(pos.x, pos.y);
+            });
+            ctx.stroke();
+
+            // Draw arrows
+            for (let i = 0; i < positions.length - 1; i++) {
+                const from = positions[i];
+                const to = positions[i + 1];
+                const midX = (from.x + to.x) / 2;
+                const midY = (from.y + to.y) / 2;
+
+                ctx.fillStyle = 'rgba(0, 212, 255, 0.5)';
+                ctx.beginPath();
+                ctx.moveTo(midX - 6, midY - 4);
+                ctx.lineTo(midX + 6, midY);
+                ctx.lineTo(midX - 6, midY + 4);
+                ctx.closePath();
+                ctx.fill();
+            }
+
+            // Draw phase nodes
+            positions.forEach((pos, i) => {
+                const isCommand = pos.owner === 'Command';
+                const color = isCommand ? colors.command : colors.agent;
+
+                // Glow
+                const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, pos.radius * 2);
+                gradient.addColorStop(0, color.replace(')', ', 0.3)').replace('rgb', 'rgba'));
+                gradient.addColorStop(1, 'transparent');
+                ctx.fillStyle = gradient;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, pos.radius * 2, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Node
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, pos.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Phase number
+                ctx.fillStyle = '#0a0a0f';
+                ctx.font = 'bold 14px JetBrains Mono, monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(pos.phase, pos.x, pos.y);
+
+                // Label
+                ctx.fillStyle = '#e0e0e4';
+                ctx.font = '11px JetBrains Mono, monospace';
+                ctx.fillText(pos.label, pos.x, pos.y + pos.radius + 16);
+
+                // I/O indicator
+                if (pos.io !== 'none') {
+                    ctx.fillStyle = pos.io === 'external' ? colors.external : colors.local;
+                    ctx.font = '9px JetBrains Mono, monospace';
+                    ctx.fillText(pos.io.toUpperCase(), pos.x, pos.y - pos.radius - 10);
+                }
+            });
+
+            // Update and draw particles
+            particles.forEach(p => {
+                if (p.phaseIndex >= positions.length - 1) {
+                    p.phaseIndex = 0;
+                    p.progress = 0;
+                }
+
+                const from = positions[p.phaseIndex];
+                const to = positions[p.phaseIndex + 1];
+
+                p.progress += p.speed;
+                if (p.progress >= 1) {
+                    p.phaseIndex++;
+                    p.progress = 0;
+                }
+
+                if (to) {
+                    p.x = from.x + (to.x - from.x) * p.progress;
+                    p.y = from.y + (to.y - from.y) * p.progress;
+                }
+
+                // Draw particle
+                ctx.fillStyle = colors.particle;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 4, 0, Math.PI * 2);
+                ctx.fill();
+
+                // Particle glow
+                const pGrad = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, 12);
+                pGrad.addColorStop(0, 'rgba(0, 255, 136, 0.4)');
+                pGrad.addColorStop(1, 'transparent');
+                ctx.fillStyle = pGrad;
+                ctx.beginPath();
+                ctx.arc(p.x, p.y, 12, 0, Math.PI * 2);
+                ctx.fill();
+            });
+
+            time++;
+            requestAnimationFrame(draw);
+        }
+
+        // Initialize particles
+        const positions = getPhasePositions();
+        for (let i = 0; i < 3; i++) {
+            const p = createParticle(positions);
+            p.phaseIndex = i * 2;
+            particles.push(p);
+        }
+
+        // Respect reduced motion
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            draw();
+        } else {
+            // Static version
+            const positions = getPhasePositions();
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            ctx.lineWidth = 2;
+            ctx.strokeStyle = 'rgba(0, 212, 255, 0.5)';
+            ctx.beginPath();
+            positions.forEach((pos, i) => {
+                if (i === 0) ctx.moveTo(pos.x, pos.y);
+                else ctx.lineTo(pos.x, pos.y);
+            });
+            ctx.stroke();
+
+            positions.forEach((pos) => {
+                const color = pos.owner === 'Command' ? colors.command : colors.agent;
+                ctx.fillStyle = color;
+                ctx.beginPath();
+                ctx.arc(pos.x, pos.y, pos.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = '#0a0a0f';
+                ctx.font = 'bold 14px JetBrains Mono, monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(pos.phase, pos.x, pos.y);
+
+                ctx.fillStyle = '#e0e0e4';
+                ctx.font = '11px JetBrains Mono, monospace';
+                ctx.fillText(pos.label, pos.x, pos.y + pos.radius + 16);
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initPipeline);
+    } else {
+        initPipeline();
+    }
+})();
+</script>
+
+<style>
+.pipeline-container {
+    background: var(--bg-0);
+    border: 1px solid var(--divider-color);
+    border-radius: 12px;
+    padding: 1.5rem 1rem 1rem;
+    margin: 1.5rem 0;
+    position: relative;
+}
+
+.pipeline-canvas {
+    width: 100%;
+    height: 180px;
+    display: block;
+}
+
+.pipeline-legend {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+    margin-top: 0.5rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.8rem;
+    color: var(--meta-color);
+}
+
+.legend-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+.legend-dot.command {
+    background: #00d4ff;
+}
+
+.legend-dot.agent {
+    background: #00ff88;
+}
+
+@media (max-width: 768px) {
+    .pipeline-container {
+        overflow-x: auto;
+    }
+
+    .pipeline-canvas {
+        min-width: 600px;
+    }
+}
+</style>

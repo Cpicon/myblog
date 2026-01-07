@@ -1,6 +1,7 @@
 +++
 title="Ml patterns design"
 date=2023-03-04
+weight = 10
 
 [taxonomies]
 categories = ["MLarchitecture"]

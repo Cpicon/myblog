@@ -1,0 +1,279 @@
+{#
+    Tree/Directory Structure Visualization
+
+    Creates an animated tree diagram for file structures.
+
+    Usage:
+    {{ tree(root="plugin-root", nodes="folder1:file1;file2,folder2:file3") }}
+
+    Format: folder:children separated by semicolons, folders separated by commas
+#}
+{% set viz_id = id | default(value="tree-" ~ now() | truncate(length=8, end="")) %}
+{% set root_name = root | default(value="root") %}
+{% set node_data = nodes | default(value="src:main.js;index.js,docs:readme.md") %}
+
+<div class="tree-container" id="{{ viz_id }}">
+    <canvas class="tree-canvas" aria-label="Directory structure visualization"></canvas>
+</div>
+
+<script>
+(function() {
+    const containerId = '{{ viz_id }}';
+
+    // Decode HTML entities (Tera encodes / as &#x2F;)
+    function decodeHTML(str) {
+        const textarea = document.createElement('textarea');
+        textarea.innerHTML = str;
+        return textarea.value;
+    }
+
+    const rootName = decodeHTML('{{ root_name }}');
+    const nodeData = decodeHTML('{{ node_data }}');
+
+    function parseNodes(data) {
+        const folders = [];
+        data.split(',').forEach(folder => {
+            const [name, childrenStr] = folder.split(':');
+            const children = childrenStr ? childrenStr.split(';').map(c => c.trim()) : [];
+            folders.push({ name: name.trim(), children, type: 'folder' });
+        });
+        return folders;
+    }
+
+    function initTree() {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const canvas = container.querySelector('.tree-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let particles = [];
+        let time = 0;
+
+        const colors = {
+            root: '#ff0080',
+            folder: '#00d4ff',
+            file: '#8b5cf6',
+            config: '#ff8800',
+            accent: '#00ff88',
+            connection: 'rgba(0, 212, 255, 0.3)',
+            text: '#e0e0e4'
+        };
+
+        const folders = parseNodes(nodeData);
+
+        function resize() {
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = 320;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        function getNodePositions() {
+            const nodes = [];
+            const centerX = canvas.width / 2;
+            const rootY = 50;
+            const folderY = 140;
+            const fileY = 230;
+
+            // Root node
+            nodes.push({
+                type: 'root',
+                label: rootName,
+                x: centerX,
+                y: rootY,
+                radius: 28,
+                color: colors.root
+            });
+
+            // Folder nodes
+            const folderSpacing = Math.min(120, (canvas.width - 100) / folders.length);
+            const startX = centerX - ((folders.length - 1) * folderSpacing) / 2;
+
+            folders.forEach((folder, i) => {
+                const x = startX + i * folderSpacing;
+                const isConfig = folder.name.includes('.') || folder.name.includes('json');
+
+                nodes.push({
+                    type: 'folder',
+                    label: folder.name,
+                    x: x,
+                    y: folderY,
+                    radius: 22,
+                    color: isConfig ? colors.config : colors.folder,
+                    parentIndex: 0,
+                    children: folder.children
+                });
+            });
+
+            // File nodes (spread under their parent folders)
+            let fileIndex = 0;
+            folders.forEach((folder, folderIdx) => {
+                const parentNode = nodes[folderIdx + 1];
+                const childCount = folder.children.length;
+
+                folder.children.forEach((child, childIdx) => {
+                    const offset = (childIdx - (childCount - 1) / 2) * 50;
+                    nodes.push({
+                        type: 'file',
+                        label: child,
+                        x: parentNode.x + offset,
+                        y: fileY + (childIdx % 2) * 35,
+                        radius: 18,
+                        color: colors.file,
+                        parentIndex: folderIdx + 1
+                    });
+                    fileIndex++;
+                });
+            });
+
+            return nodes;
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const nodes = getNodePositions();
+
+            // Draw connections
+            ctx.strokeStyle = colors.connection;
+            ctx.lineWidth = 2;
+
+            nodes.forEach((node, i) => {
+                if (node.parentIndex !== undefined) {
+                    const parent = nodes[node.parentIndex];
+                    ctx.beginPath();
+                    ctx.moveTo(parent.x, parent.y + parent.radius);
+                    ctx.lineTo(node.x, node.y - node.radius);
+                    ctx.stroke();
+                }
+            });
+
+            // Draw nodes
+            nodes.forEach((node, i) => {
+                // Glow effect
+                ctx.shadowColor = node.color;
+                ctx.shadowBlur = 15;
+
+                // Node circle
+                ctx.fillStyle = node.color;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.shadowBlur = 0;
+
+                // Border
+                ctx.strokeStyle = colors.accent;
+                ctx.lineWidth = 2;
+                ctx.stroke();
+
+                // Icon based on type
+                ctx.fillStyle = '#0a0a0f';
+                ctx.font = node.type === 'root' ? '16px sans-serif' : '12px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                if (node.type === 'root') {
+                    ctx.fillText('📁', node.x, node.y);
+                } else if (node.type === 'folder') {
+                    ctx.fillText('📂', node.x, node.y);
+                } else {
+                    ctx.fillText('📄', node.x, node.y);
+                }
+
+                // Label
+                ctx.fillStyle = colors.text;
+                ctx.font = node.type === 'root' ? 'bold 12px JetBrains Mono' : '10px JetBrains Mono';
+                ctx.fillText(node.label, node.x, node.y + node.radius + 14);
+            });
+
+            // Animated particles
+            if (time % 60 === 0 && particles.length < 8) {
+                const randomFolder = Math.floor(Math.random() * folders.length) + 1;
+                const parentNode = nodes[randomFolder];
+                if (parentNode) {
+                    particles.push({
+                        x: nodes[0].x,
+                        y: nodes[0].y,
+                        targetX: parentNode.x,
+                        targetY: parentNode.y,
+                        progress: 0,
+                        speed: 0.02
+                    });
+                }
+            }
+
+            particles = particles.filter(p => p.progress < 1);
+            particles.forEach(p => {
+                p.progress += p.speed;
+                const ease = p.progress * p.progress * (3 - 2 * p.progress);
+                const x = p.x + (p.targetX - p.x) * ease;
+                const y = p.y + (p.targetY - p.y) * ease;
+
+                ctx.fillStyle = colors.accent;
+                ctx.shadowColor = colors.accent;
+                ctx.shadowBlur = 10;
+                ctx.beginPath();
+                ctx.arc(x, y, 4, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.shadowBlur = 0;
+            });
+
+            time++;
+            requestAnimationFrame(draw);
+        }
+
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            draw();
+        } else {
+            // Static version
+            const nodes = getNodePositions();
+            nodes.forEach(node => {
+                ctx.fillStyle = node.color;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = colors.text;
+                ctx.font = '10px JetBrains Mono';
+                ctx.textAlign = 'center';
+                ctx.fillText(node.label, node.x, node.y + node.radius + 14);
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initTree);
+    } else {
+        initTree();
+    }
+})();
+</script>
+
+<style>
+.tree-container {
+    background: var(--bg-0);
+    border: 1px solid var(--divider-color);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    position: relative;
+}
+
+.tree-canvas {
+    width: 100%;
+    height: 320px;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .tree-container {
+        overflow-x: auto;
+    }
+
+    .tree-canvas {
+        min-width: 500px;
+    }
+}
+</style>

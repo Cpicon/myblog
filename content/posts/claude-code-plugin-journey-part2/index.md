@@ -1,6 +1,6 @@
 +++
 title = "The Inheritance Paradox: Tool Scoping in Multi-Agent Systems"
-date = 2026-01-06
+date = 2026-01-06T12:00:00
 weight = 3
 
 [taxonomies]
@@ -114,10 +114,7 @@ This discrepancy is documented across four GitHub issues (#13605, #15810, #14496
 
 **Discovery**: The platform enforces a single-level nesting limit for agent spawning.
 
-```
-Agent → Subagent → Subsubagent
-                   ↑ BLOCKED
-```
+{{ blocked_flow(nodes="Agent,Subagent", blocked="Subsubagent") }}
 
 When an agent attempts to spawn a nested subagent, the platform returns:
 
@@ -133,15 +130,7 @@ Error: Subagents cannot spawn subagents
 
 **Emergent Architecture: Hub-and-Spoke**
 
-```
-        User
-          │
-      Command
-          │
-    Main Agent (Hub)
-    ╱    │    ╲
-Agent1 Agent2 Agent3 (Spokes)
-```
+{{ hub_spoke(hub="Main Agent", spokes="Agent 1,Agent 2,Agent 3") }}
 
 This constraint eliminates tree-structured agent hierarchies in favor of flat, hub-coordinated topologies. The "hub" agent coordinates parallel execution of "spoke" agents. No spoke can spawn additional agents.
 
@@ -193,15 +182,17 @@ In response to MCP access limitations, a clear architectural pattern emerged: se
 
 **6-Phase Pipeline Example**:
 
-| Phase | Owner | I/O Type | Operation |
-|-------|-------|----------|-----------|
-| 0 | Command | External | Service availability check |
-| 1 | Command | External | Data resolution (MCP) |
-| 2 | Command | Local | Load content from disk |
-| 3 | Command | External | Validation query (MCP) |
-| 4 | Agent | None | Reasoning/planning |
-| 5 | Agent | None | Content formatting |
-| 6 | Command | External/Local | Output delivery |
+{% pipeline() %}
+[
+    {"phase": 0, "owner": "Command", "label": "Availability", "io": "external"},
+    {"phase": 1, "owner": "Command", "label": "Data Resolve", "io": "external"},
+    {"phase": 2, "owner": "Command", "label": "Load Content", "io": "local"},
+    {"phase": 3, "owner": "Command", "label": "Validation", "io": "external"},
+    {"phase": 4, "owner": "Agent", "label": "Reasoning", "io": "none"},
+    {"phase": 5, "owner": "Agent", "label": "Formatting", "io": "none"},
+    {"phase": 6, "owner": "Command", "label": "Delivery", "io": "external"}
+]
+{% end %}
 
 **Generalizability**: This separation applies to any framework where tool access constraints exist. The intelligence layer becomes portable and testable in isolation. The I/O layer becomes the platform-specific adapter.
 
@@ -228,17 +219,7 @@ Each phase transition represents a validation checkpoint:
 
 When external services become unavailable, the system degrades gracefully:
 
-```
-Normal Mode:
-  Phase 1: MCP project resolution → Execute
-  Phase 3: MCP duplicate check → Execute
-  Phase 6: MCP issue creation → Execute
-
-Fallback Mode:
-  Phase 1: MCP unavailable → Skip
-  Phase 3: MCP unavailable → Skip
-  Phase 6: MCP unavailable → Local file output
-```
+{{ comparison(mode1_title="Normal Mode", mode1_steps="Phase 1: MCP Resolve,Phase 3: Dup Check,Phase 6: Create Issue", mode2_title="Fallback Mode", mode2_steps="Phase 1: Skip,Phase 3: Skip,Phase 6: Local File", shared_title="Intelligence Layer (Always Active)", shared_steps="Phase 4: Reasoning,Phase 5: Formatting") }}
 
 The intelligence layers (Phases 4-5) function identically in both modes. Core reasoning is preserved even when I/O capabilities are reduced.
 

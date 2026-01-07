@@ -1,0 +1,281 @@
+{#
+    Blocked Flow Visualization
+
+    Shows a horizontal flow with one blocked/forbidden step.
+
+    Usage:
+    {{ blocked_flow(nodes="User,Command,Agent,SubAgent", blocked="SubSubAgent") }}
+#}
+{% set viz_id = id | default(value="blocked-" ~ now() | truncate(length=8, end="")) %}
+{% set node_list = nodes | default(value="Step 1,Step 2,Step 3") | split(pat=",") %}
+{% set blocked_node = blocked | default(value="Blocked") %}
+
+<div class="blocked-flow-container" id="{{ viz_id }}">
+    <canvas class="blocked-flow-canvas" aria-label="Flow diagram with blocked step"></canvas>
+</div>
+
+<script>
+(function() {
+    const containerId = '{{ viz_id }}';
+    const nodeNames = [{% for node in node_list %}'{{ node | trim }}'{% if not loop.last %}, {% endif %}{% endfor %}];
+    const blockedName = '{{ blocked_node }}';
+
+    function initBlockedFlow() {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+
+        const canvas = container.querySelector('.blocked-flow-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let particles = [];
+        let time = 0;
+        let pulsePhase = 0;
+
+        const colors = {
+            nodes: ['#ff0080', '#00d4ff', '#00ff88', '#8b5cf6'],
+            blocked: '#ff4444',
+            blockedBg: '#442222',
+            particle: '#00ff88',
+            connection: 'rgba(0, 212, 255, 0.4)',
+            blockedConnection: 'rgba(255, 68, 68, 0.5)',
+            text: '#e0e0e4'
+        };
+
+        function resize() {
+            const rect = container.getBoundingClientRect();
+            canvas.width = rect.width;
+            canvas.height = 180;
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        function getNodePositions() {
+            const allNodes = [...nodeNames, blockedName];
+            const margin = 60;
+            const spacing = (canvas.width - margin * 2) / (allNodes.length - 1);
+            const y = canvas.height / 2;
+
+            return allNodes.map((name, i) => ({
+                label: name,
+                x: margin + i * spacing,
+                y: y,
+                radius: 26,
+                isBlocked: i === allNodes.length - 1,
+                color: i < nodeNames.length ? colors.nodes[i % colors.nodes.length] : colors.blockedBg
+            }));
+        }
+
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const nodes = getNodePositions();
+
+            pulsePhase += 0.05;
+
+            // Draw connections
+            for (let i = 0; i < nodes.length - 1; i++) {
+                const from = nodes[i];
+                const to = nodes[i + 1];
+                const isBlockedConnection = to.isBlocked;
+
+                ctx.beginPath();
+                ctx.moveTo(from.x + from.radius, from.y);
+                ctx.lineTo(to.x - to.radius, to.y);
+
+                if (isBlockedConnection) {
+                    ctx.strokeStyle = colors.blockedConnection;
+                    ctx.setLineDash([8, 4]);
+                } else {
+                    ctx.strokeStyle = colors.connection;
+                    ctx.setLineDash([]);
+                }
+                ctx.lineWidth = 3;
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                // Arrow
+                if (!isBlockedConnection) {
+                    const midX = (from.x + to.x) / 2;
+                    ctx.fillStyle = colors.connection;
+                    ctx.beginPath();
+                    ctx.moveTo(midX - 5, from.y - 6);
+                    ctx.lineTo(midX + 8, from.y);
+                    ctx.lineTo(midX - 5, from.y + 6);
+                    ctx.closePath();
+                    ctx.fill();
+                }
+            }
+
+            // Draw "BLOCKED" label on the blocked connection
+            const lastNormal = nodes[nodes.length - 2];
+            const blocked = nodes[nodes.length - 1];
+            const midX = (lastNormal.x + blocked.x) / 2;
+
+            ctx.save();
+            ctx.fillStyle = colors.blocked;
+            ctx.font = 'bold 11px JetBrains Mono';
+            ctx.textAlign = 'center';
+
+            // Pulsing X
+            const pulse = Math.sin(pulsePhase) * 0.3 + 1;
+            ctx.font = `bold ${14 * pulse}px JetBrains Mono`;
+            ctx.fillText('❌', midX, nodes[0].y - 20);
+
+            ctx.font = 'bold 10px JetBrains Mono';
+            ctx.fillText('BLOCKED', midX, nodes[0].y + 32);
+            ctx.restore();
+
+            // Draw nodes
+            nodes.forEach((node, i) => {
+                if (node.isBlocked) {
+                    // Blocked node - pulsing red border
+                    ctx.shadowColor = colors.blocked;
+                    ctx.shadowBlur = 10 + Math.sin(pulsePhase) * 5;
+
+                    ctx.fillStyle = node.color;
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.strokeStyle = colors.blocked;
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([4, 4]);
+                    ctx.stroke();
+                    ctx.setLineDash([]);
+
+                    ctx.shadowBlur = 0;
+
+                    // Strikethrough effect
+                    ctx.strokeStyle = colors.blocked;
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.moveTo(node.x - node.radius + 5, node.y - node.radius + 5);
+                    ctx.lineTo(node.x + node.radius - 5, node.y + node.radius - 5);
+                    ctx.stroke();
+                } else {
+                    // Normal node
+                    ctx.shadowColor = node.color;
+                    ctx.shadowBlur = 15;
+
+                    ctx.fillStyle = node.color;
+                    ctx.beginPath();
+                    ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.shadowBlur = 0;
+
+                    ctx.strokeStyle = '#00ff88';
+                    ctx.lineWidth = 2;
+                    ctx.stroke();
+                }
+
+                // Label
+                ctx.fillStyle = node.isBlocked ? '#666' : '#0a0a0f';
+                ctx.font = 'bold 10px JetBrains Mono';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                // Wrap text if needed
+                const words = node.label.split(/(?=[A-Z])/);
+                if (words.length > 1 && node.label.length > 8) {
+                    ctx.fillText(words[0], node.x, node.y - 6);
+                    ctx.fillText(words.slice(1).join(''), node.x, node.y + 6);
+                } else {
+                    ctx.fillText(node.label, node.x, node.y);
+                }
+            });
+
+            // Particles (only on valid connections)
+            particles.forEach(p => {
+                p.progress += p.speed;
+                if (p.progress >= 1) {
+                    p.segmentIndex++;
+                    p.progress = 0;
+                    if (p.segmentIndex >= nodes.length - 2) {
+                        p.segmentIndex = 0;
+                    }
+                }
+
+                const from = nodes[p.segmentIndex];
+                const to = nodes[p.segmentIndex + 1];
+
+                if (from && to && !to.isBlocked) {
+                    const ease = p.progress * p.progress * (3 - 2 * p.progress);
+                    const x = from.x + (to.x - from.x) * ease;
+                    const y = from.y + (to.y - from.y) * ease;
+
+                    ctx.fillStyle = colors.particle;
+                    ctx.shadowColor = colors.particle;
+                    ctx.shadowBlur = 10;
+                    ctx.beginPath();
+                    ctx.arc(x, y, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.shadowBlur = 0;
+                }
+            });
+
+            time++;
+            requestAnimationFrame(draw);
+        }
+
+        // Initialize particles
+        for (let i = 0; i < 2; i++) {
+            particles.push({
+                segmentIndex: i,
+                progress: 0,
+                speed: 0.015
+            });
+        }
+
+        if (!window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+            draw();
+        } else {
+            // Static version
+            const nodes = getNodePositions();
+            nodes.forEach(node => {
+                ctx.fillStyle = node.color;
+                ctx.beginPath();
+                ctx.arc(node.x, node.y, node.radius, 0, Math.PI * 2);
+                ctx.fill();
+
+                ctx.fillStyle = node.isBlocked ? '#666' : '#0a0a0f';
+                ctx.font = 'bold 10px JetBrains Mono';
+                ctx.textAlign = 'center';
+                ctx.fillText(node.label, node.x, node.y);
+            });
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initBlockedFlow);
+    } else {
+        initBlockedFlow();
+    }
+})();
+</script>
+
+<style>
+.blocked-flow-container {
+    background: var(--bg-0);
+    border: 1px solid var(--divider-color);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+    position: relative;
+}
+
+.blocked-flow-canvas {
+    width: 100%;
+    height: 180px;
+    display: block;
+}
+
+@media (max-width: 768px) {
+    .blocked-flow-container {
+        overflow-x: auto;
+    }
+
+    .blocked-flow-canvas {
+        min-width: 500px;
+    }
+}
+</style>

@@ -1,0 +1,70 @@
+{#
+    Chart.js Shortcode for Blog Posts
+
+    Usage:
+    {% chart(id="my-chart", height="300px", type="line") %}
+    // Chart.js configuration here
+    {% end %}
+
+    Parameters:
+    - id: Unique canvas ID (required)
+    - height: Container height (default: 300px)
+    - type: Chart type hint for styling (optional)
+#}
+{% set chart_id = id | default(value="chart-" ~ now()) %}
+{% set chart_height = height | default(value="300px") %}
+{% set chart_type = type | default(value="line") %}
+
+<div class="blog-chart-container" style="height: {{ chart_height }}; position: relative;">
+    <canvas id="{{ chart_id }}" aria-label="Data visualization chart"></canvas>
+</div>
+
+<script>
+(function() {
+    // Load Chart.js if not already loaded
+    function initChart() {
+        if (typeof Chart === 'undefined') {
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js';
+            script.onload = createChart;
+            document.head.appendChild(script);
+        } else {
+            createChart();
+        }
+    }
+
+    function createChart() {
+        // Chart.js cyber theme defaults
+        Chart.defaults.color = '#8888a0';
+        Chart.defaults.borderColor = 'rgba(0, 212, 255, 0.1)';
+        Chart.defaults.font.family = "'JetBrains Mono', monospace";
+
+        const canvas = document.getElementById('{{ chart_id }}');
+        if (!canvas) return;
+
+        {{ body | safe }}
+    }
+
+    // Initialize when DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initChart);
+    } else {
+        initChart();
+    }
+})();
+</script>
+
+<style>
+.blog-chart-container {
+    background: var(--bg-0);
+    border: 1px solid var(--divider-color);
+    border-radius: 12px;
+    padding: 1rem;
+    margin: 1.5rem 0;
+}
+
+.blog-chart-container canvas {
+    width: 100% !important;
+    height: 100% !important;
+}
+</style>

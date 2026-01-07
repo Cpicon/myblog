@@ -1,6 +1,6 @@
 +++
 title = "Claude Code Plugin Journey Part 0: Agent Team Creator"
-date = 2026-01-06
+date = 2026-01-06T10:00:00
 weight = 1
 
 [taxonomies]
@@ -274,38 +274,7 @@ Each investigation is independent. The debugger creates timestamped reports, and
 
 ## The Complete Workflow
 
-```
-┌─────────────────────────────────────────────────────────┐
-│  1. /generate-agent-team                                │
-│     Creates: fastapi-expert, react-specialist, etc.     │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────────┐
-│  2. Use agents for daily work                           │
-│     "Use fastapi-expert to explain the auth flow"       │
-│     "Use react-specialist to add a new component"       │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────────┐
-│  3. /generate-debugger                                  │
-│     Creates: project-debugger (orchestrator)            │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────────┐
-│  4. Debug complex issues                                │
-│     "Use project-debugger to investigate the 500 error" │
-│     Produces: .claude/reports/debugging/report-DATE.md  │
-└─────────────────────┬───────────────────────────────────┘
-                      │
-                      ▼
-┌─────────────────────────────────────────────────────────┐
-│  5. /generate-jira-task                                 │
-│     Auto-finds latest report, creates Jira ticket       │
-└─────────────────────────────────────────────────────────┘
-```
+{{ workflow(steps="/generate-agent-team|Creates specialist agents,Use agents daily|fastapi-expert react-specialist,/generate-debugger|Creates project-debugger,Debug issues|Saves to .claude/reports/,/generate-jira-task|Creates Jira ticket") }}
 
 ---
 

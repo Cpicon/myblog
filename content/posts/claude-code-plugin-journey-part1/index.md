@@ -1,6 +1,6 @@
 +++
 title = "The Hybrid Architecture Pattern: Lessons from agent-team-creator"
-date = 2026-01-06
+date = 2026-01-06T11:00:00
 weight = 2
 
 [taxonomies]
@@ -54,21 +54,7 @@ Before diving into the pain points, let me share the landscape. Claude Code plug
 
 The directory structure follows a predictable pattern:
 
-```
-plugin-root/
-├── .claude-plugin/
-│   ├── marketplace.json
-│   └── plugin.json
-├── commands/
-│   └── *.md
-├── agents/
-│   └── *.md
-├── skills/
-│   └── skill-name/SKILL.md
-├── hooks/
-│   └── *.md
-└── .mcp.json
-```
+{{ tree(root="plugin-root", nodes=".claude-plugin/:marketplace.json;plugin.json,commands/:*.md,agents/:*.md,skills/:SKILL.md,hooks/:*.md,.mcp.json:config") }}
 
 Armed with this knowledge, I built my first prototype. It worked—sort of. The commands executed. The agents spawned. And then everything started breaking in ways the documentation didn't prepare me for.
 
@@ -235,9 +221,7 @@ My original design had agents spawning specialized sub-agents in a recursive tre
 
 When I tried:
 
-```
-User → Command → Agent → SubAgent → SubSubAgent
-```
+{{ blocked_flow(nodes="User,Command,Agent,SubAgent", blocked="SubSubAgent") }}
 
 Claude Code responded:
 
@@ -287,17 +271,19 @@ Commands become the I/O adapters. Agents become the reasoning engines. Neither t
 
 Here's how this plays out in my `/generate-jira-task` command:
 
-| Phase | Owner | Operation |
-|-------|-------|-----------|
-| 0 | Command | MCP availability check |
-| 1 | Command | Project resolution via MCP |
-| 2 | Command | Load debugging report from file |
-| 3 | Command | Duplicate check via MCP JQL |
-| 4 | Agent | `implementation-planner` reasoning |
-| 5 | Agent | `jira-writer` formatting |
-| 6 | Command | Create Jira issue OR output markdown |
+{% pipeline() %}
+[
+    {"phase": 0, "owner": "Command", "label": "MCP Check", "io": "external"},
+    {"phase": 1, "owner": "Command", "label": "Project Resolve", "io": "external"},
+    {"phase": 2, "owner": "Command", "label": "Load Report", "io": "local"},
+    {"phase": 3, "owner": "Command", "label": "Dup Check", "io": "external"},
+    {"phase": 4, "owner": "Agent", "label": "Reasoning", "io": "none"},
+    {"phase": 5, "owner": "Agent", "label": "Formatting", "io": "none"},
+    {"phase": 6, "owner": "Command", "label": "Output", "io": "external"}
+]
+{% end %}
 
-Commands handle all external communication. Agents handle all thinking. The boundary is clean.
+Commands handle all external communication (cyan nodes). Agents handle all thinking (green nodes). The boundary is clean—notice how I/O operations (marked EXTERNAL/LOCAL) cluster at the Command layer.
 
 ### Graceful Degradation
 
